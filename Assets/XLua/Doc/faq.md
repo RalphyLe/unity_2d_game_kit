@@ -10,6 +10,14 @@ xLua目前以zip包形式发布，在工程目录下解压即可。
 
 更改目录要注意的是：生成代码和xLua核心代码必须在同一程序集。如果你要用热补丁特性，xLua核心代码必须在Assembly-CSharp程序集。
 
+## xLua的配置
+
+如果你用的是lua编程，你可能需要把一些频繁访问的类配置到LuaCallCSharp，这些类的成员如果有条件编译（大多数情况下是UNITY_EDITOR）的话，你需要通过BlackList配置排除；如果你需要通过delegate回调到lua的地方，得把这些delegate配置到CSharpCallLua。
+
+如果你用的是热补丁，你需要把要注入的代码加到Hotfix列表；如果你需要通过delegate回调到lua的地方，也得把这些delegate配置到CSharpCallLua。
+
+xLua提供了强大的动态配置，让你可以结合反射实现任意的自动化配置，动态配置介绍看[这里](configure.md)。xLua希望你能根据自身项目的需求自行配置，同时为了方便部分对反射api了解不够的童鞋，xLua也针对上面两者方式分别写了参考配置：[ExampleConfig.cs](../Editor/ExampleConfig.cs)，直接打开相应部分的注释即可使用。
+
 ## lua源码只能以txt后缀？
 
 什么后缀都可以。
@@ -154,6 +162,47 @@ go:GetButton().onClick:AddListener(function()
 end)
 ```
 
+如果xlua版本大于2.1.12的话，新增反射调用泛型方法的支持，比如对于这么个C#类型：
+```csharp
+public class GetGenericMethodTest
+{
+    int a = 100;
+    public int Foo<T1, T2>(T1 p1, T2 p2)
+    {
+        Debug.Log(typeof(T1));
+        Debug.Log(typeof(T2));
+        Debug.Log(p1);
+        Debug.Log(p2);
+        return a;
+    }
+
+    public static void Bar<T1, T2>(T1 p1, T2 p2)
+    {
+        Debug.Log(typeof(T1));
+        Debug.Log(typeof(T2));
+        Debug.Log(p1);
+        Debug.Log(p2);
+    }
+}
+```
+在lua那这么调用：
+```lua
+local foo_generic = xlua.get_generic_method(CS.GetGenericMethodTest, 'Foo')
+local bar_generic = xlua.get_generic_method(CS.GetGenericMethodTest, 'Bar')
+
+local foo = foo_generic(CS.System.Int32, CS.System.Double)
+local bar = bar_generic(CS.System.Double, CS.UnityEngine.GameObject)
+
+-- call instance method
+local o = CS.GetGenericMethodTest()
+local ret = foo(o, 1, 2)
+print(ret)
+
+-- call static method
+bar(2, nil)
+```
+
+
 ## 支持lua调用C#重载函数吗？
 
 支持，但没有C#端支持的那么完善，比如重载方法void Foo(int a)和void Foo(short a)，由于int和short都对应lua的number，是没法根据参数判断调用的是哪个重载。这时你可以借助扩展方法来为其中一个起一个别名。
@@ -218,6 +267,20 @@ local dic = CS.System.Activator.CreateInstance(CS.System.Type.GetType('System.Co
 dic:Add('a', CS.UnityEngine.Vector3(1, 2, 3))
 print(dic:TryGetValue('a'))
 ~~~
+
+如果你的xLua版本大于v2.1.12，将会有更漂亮的表达方式
+
+~~~lua
+-- local List_String = CS.System.Collections.Generic['List<>'](CS.System.String) -- another way
+local List_String = CS.System.Collections.Generic.List(CS.System.String)
+local lst = List_String()
+
+local Dictionary_String_Vector3 = CS.System.Collections.Generic.Dictionary(CS.System.String, CS.UnityEngine.Vector3)
+local dic = Dictionary_String_Vector3()
+dic:Add('a', CS.UnityEngine.Vector3(1, 2, 3))
+print(dic:TryGetValue('a'))
+~~~
+
 
 ## 调用LuaEnv.Dispose时，报“try to dispose a LuaEnv with C# callback!”错是什么原因？
 
@@ -357,3 +420,6 @@ f2(obj, 1, 2) --调用int版本
 
 考虑到生成代码量，不支持通过obj:ExtentionMethod()的方式去调用，支持通过静态方法的方式去调用CS.ExtentionClass.ExtentionMethod(obj)
 
+## 如何把xLua的Wrap生成操作集成到我项目的自动打包流程中？
+
+可以参考[例子13](../Examples/13_BuildFromCLI/)，通过命令行调用Unity自定义类方法出包。

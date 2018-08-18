@@ -373,7 +373,7 @@ namespace XLua
                 }
             }
 
-            throw new InvalidCastException("This type must add to CSharpCallLua: " + delegateType);
+            throw new InvalidCastException("This type must add to CSharpCallLua: " + delegateType.GetFriendlyName());
         }
         Dictionary<int, WeakReference> delegate_bridges = new Dictionary<int, WeakReference>();
         public object CreateDelegateBridge(RealStatePtr L, Type delegateType, int idx)
@@ -587,6 +587,9 @@ namespace XLua
             LuaAPI.xlua_pushasciistring(L, "import_type");
 			LuaAPI.lua_pushstdcallcfunction(L,importTypeFunction);
 			LuaAPI.lua_rawset(L, -3);
+            LuaAPI.xlua_pushasciistring(L, "import_generic_type");
+            LuaAPI.lua_pushstdcallcfunction(L, StaticLuaCallbacks.ImportGenericType);
+            LuaAPI.lua_rawset(L, -3);
             LuaAPI.xlua_pushasciistring(L, "cast");
             LuaAPI.lua_pushstdcallcfunction(L, castFunction);
             LuaAPI.lua_rawset(L, -3);
@@ -604,6 +607,9 @@ namespace XLua
             LuaAPI.lua_rawset(L, -3);
             LuaAPI.xlua_pushasciistring(L, "tofunction");
             LuaAPI.lua_pushstdcallcfunction(L, StaticLuaCallbacks.ToFunction);
+            LuaAPI.lua_rawset(L, -3);
+            LuaAPI.xlua_pushasciistring(L, "get_generic_method");
+            LuaAPI.lua_pushstdcallcfunction(L, StaticLuaCallbacks.GetGenericMethod);
             LuaAPI.lua_rawset(L, -3);
             LuaAPI.xlua_pushasciistring(L, "release");
             LuaAPI.lua_pushstdcallcfunction(L, StaticLuaCallbacks.ReleaseCsObject);
@@ -759,6 +765,10 @@ namespace XLua
                     if (rawObject != null)
                     {
                         obj = rawObject.Target;
+                    }
+                    if (obj == null)
+                    {
+                        return !type.IsValueType;
                     }
                     return type.IsAssignableFrom(obj.GetType());
                 }
@@ -1255,7 +1265,7 @@ namespace XLua
             }
             else if (objects.TryGetValue(udata, out obj))
             {
-#if !UNITY_5 && !XLUA_GENERAL && !UNITY_2017
+#if !UNITY_5 && !XLUA_GENERAL && !UNITY_2017 && !UNITY_2017_1_OR_NEWER && !UNITY_2018
                 if (obj != null && obj is UnityEngine.Object && ((obj as UnityEngine.Object) == null))
                 {
                     //throw new UnityEngine.MissingReferenceException("The object of type '"+ obj.GetType().Name +"' has been destroyed but you are still trying to access it.");

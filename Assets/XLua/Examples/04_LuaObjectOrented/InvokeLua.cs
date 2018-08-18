@@ -62,8 +62,8 @@ public class InvokeLua : MonoBehaviour
 			                        table.remove(self.notifylist, i)
 			                        break
 		                        end
-                            print('remove', delegate)
 	                        end
+                            print('remove', delegate)
                         end,
 
                         notify = function(self, evt)

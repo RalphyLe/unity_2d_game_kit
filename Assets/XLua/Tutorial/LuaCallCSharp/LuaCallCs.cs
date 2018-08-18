@@ -198,7 +198,6 @@ public class LuaCallCs : MonoBehaviour {
             local testobj = DrivenClass()
             testobj.DMF = 1024--设置成员属性
             print(testobj.DMF)--读取成员属性
-            --无参数方法
             testobj:DMFunc()--成员方法
 
             --基类属性，方法
